@@ -194,7 +194,14 @@ client.on('interactionCreate', async interaction => {
 
             case 'say':
                 const text = interaction.options.getString('noidung');
+
+                const timeLog = new Date().toLocaleString('vi-VN');
+                console.log(`[${timeLog}] 🗣️ ${user.tag} (ID: ${user.id}) đã dùng /say: "${text}"`);
+
+                // 2. Bot thực hiện gửi tin nhắn
                 await interaction.channel.send(text);
+
+                // 3. Báo thành công (Ẩn danh)
                 await interaction.reply({
                     content: '✅ Đã gửi tin nhắn!',
                     flags: MessageFlags.Ephemeral
