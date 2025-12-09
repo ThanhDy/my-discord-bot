@@ -134,6 +134,25 @@ const commands = [
             }
         ]
     },
+    {
+        name: 'give',
+        description: 'Chuyển Kim Hồn Tệ cho người khác',
+        options: [
+            {
+                name: 'nguoi_nhan',
+                description: 'Chọn người nhận tiền',
+                type: 6, // USER
+                required: true
+            },
+            {
+                name: 'so_tien',
+                description: 'Số tiền muốn chuyển',
+                type: 4, // INTEGER
+                required: true,
+                min_value: 1 // Chỉ được chuyển số dương
+            }
+        ]
+    },
 ];
 
 // 5. ĐĂNG KÝ LỆNH
@@ -304,6 +323,54 @@ client.on('interactionCreate', async interaction => {
                     content: '✅ Đã thực hiện lệnh thành công!',
                     flags: MessageFlags.Ephemeral
                 });
+                break;
+
+            case 'give':
+                const receiverUser = interaction.options.getUser('nguoi_nhan');
+                const amountToGive = interaction.options.getInteger('so_tien');
+
+                // 1. Chặn tự chuyển cho mình
+                if (user.id === receiverUser.id) {
+                    await interaction.reply({
+                        content: '🚫 Đạo hữu định luyện "Tả Hữu Hỗ Bác" à? Không thể tự chuyển tiền cho chính mình!',
+
+                    });
+                    break;
+                }
+
+                // 2. Chặn chuyển cho Bot
+                if (receiverUser.bot) {
+                    await interaction.reply({
+                        content: '🤖 Bot tu luyện bằng điện, không cần Kim Hồn Tệ!',
+
+                    });
+                    break;
+                }
+
+                // 3. Lấy dữ liệu của cả 2 người
+                const senderProfile = await getUser(user.id);       // Người gửi (Bạn)
+                const receiverProfile = await getUser(receiverUser.id); // Người nhận
+
+                // 4. Kiểm tra số dư người gửi
+                if (senderProfile.balance < amountToGive) {
+                    await interaction.reply({
+                        content: `⚠️ **Không đủ tiền!**\nĐạo hữu chỉ có **${senderProfile.balance.toLocaleString()}**, không đủ để chuyển **${amountToGive.toLocaleString()}**.`,
+                    });
+                    break;
+                }
+
+                // 5. Thực hiện giao dịch (Trừ người gửi, Cộng người nhận)
+                senderProfile.balance -= amountToGive;
+                receiverProfile.balance += amountToGive;
+
+                // 6. Lưu dữ liệu lên MongoDB (QUAN TRỌNG: Lưu cả 2)
+                await senderProfile.save();
+                await receiverProfile.save();
+
+                // 7. Thông báo thành công
+                await interaction.reply(
+                    `💸 **GIAO DỊCH THÀNH CÔNG!**\n<@${user.id}> đã chuyển **${amountToGive.toLocaleString()} Kim Hồn Tệ** cho <@${receiverUser.id}>.\n🤝 Tình nghĩa huynh đệ thắm thiết!`
+                );
                 break;
 
             default:
