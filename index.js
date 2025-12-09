@@ -256,19 +256,41 @@ client.on('interactionCreate', async interaction => {
                 const targetUser = interaction.options.getUser('nguoi_choi');
                 const amountToAdd = interaction.options.getInteger('so_tien');
 
-                // Lấy user từ DB và cập nhật tiền
+                // Lấy thông tin User
                 let targetData = await getUser(targetUser.id);
+
+                // --- [LOGIC MỚI] KIỂM TRA TRƯỚC KHI TRỪ ---
+                if (amountToAdd < 0) {
+                    // 1. Nếu đang 0 đồng mà còn đòi trừ -> Báo lỗi ngay
+                    if (targetData.balance <= 0) {
+                        await interaction.channel.send(
+                            `🛑 **THIÊN ĐẠO DỪNG TAY!**\n<@${targetUser.id}> hiện tại đã "khố rách áo ôm" (0 Kim Hồn Tệ), trên người không còn gì để phạt nữa.`
+                        );
+                        // Kết thúc lệnh (phải reply ẩn để không lỗi)
+                        await interaction.reply({ content: 'Người chơi đã hết tiền, không thể trừ.', flags: MessageFlags.Ephemeral });
+                        break;
+                    }
+                }
+
+                // Cộng/Trừ tiền
                 targetData.balance += amountToAdd;
+
+                // 2. Nếu trừ quá tay (Ví dụ: Có 10k mà trừ 20k) -> Gán về 0 luôn (Không cho âm)
+                if (targetData.balance < 0) {
+                    targetData.balance = 0;
+                }
+
+                // Lưu vào Database
                 await targetData.save();
 
-                // 1. Gửi tin nhắn thông báo ra kênh chat (Dùng channel.send)
+                // Gửi thông báo ra kênh chat
                 if (amountToAdd > 0) {
-                    // TRƯỜNG HỢP CỘNG TIỀN
+                    // CỘNG TIỀN
                     await interaction.channel.send(
                         `🌅 **THIÊN ĐẠO BAN PHÚC!**\n<@${targetUser.id}> vừa nhận được cơ duyên, túi tiền tăng thêm **${amountToAdd.toLocaleString()} Kim Hồn Tệ**.\n💰 Số dư hiện tại: **${targetData.balance.toLocaleString()}**`
                     );
                 } else if (amountToAdd < 0) {
-                    // TRƯỜNG HỢP TRỪ TIỀN
+                    // TRỪ TIỀN
                     const positiveNum = Math.abs(amountToAdd);
                     await interaction.channel.send(
                         `⚡ **THIÊN ĐẠO TRỪNG PHẠT!**\n<@${targetUser.id}> làm điều nghịch thiên, bị tước đi **${positiveNum.toLocaleString()} Kim Hồn Tệ**.\n💸 Số dư hiện tại: **${targetData.balance.toLocaleString()}**`
@@ -277,7 +299,7 @@ client.on('interactionCreate', async interaction => {
                     await interaction.channel.send(`Thiên Đạo đi ngang qua <@${targetUser.id}> nhưng không làm gì cả.`);
                 }
 
-                // 2. Báo riêng cho Admin biết là lệnh đã chạy xong (Bắt buộc phải có để không lỗi)
+                // Xác nhận hoàn thành lệnh
                 await interaction.reply({
                     content: '✅ Đã thực hiện lệnh thành công!',
                     flags: MessageFlags.Ephemeral
