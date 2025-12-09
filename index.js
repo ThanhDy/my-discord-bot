@@ -44,6 +44,10 @@ const commands = [
         name: 'diemdanh',
         description: 'Điểm danh mỗi ngày',
     },
+    {
+        name: 'donate',
+        description: 'Ủng hộ bot để phát triển hơn',
+    },
 ];
 
 // 2. Hàm đăng ký lệnh lên Server của Discord
@@ -90,6 +94,10 @@ client.on('interactionCreate', async interaction => {
 
         case 'diemdanh':
             await interaction.reply('Điểm danh thành công!');
+            break;
+
+        case 'donate':
+            await interaction.reply('STK: 456799799 - VIB');
             break;
 
         default:
