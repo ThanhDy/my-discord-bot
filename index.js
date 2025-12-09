@@ -12,8 +12,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(200);
     res.end('Bot Discord dang hoat dong!');
 });
-server.listen(port, () => {
-    console.log(`Server gia lap dang chay tren port ${port}`);
+server.listen(port, '0.0.0.0', () => {
+    console.log(`Server is listening on port ${port}`);
 });
 
 
