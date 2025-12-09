@@ -201,7 +201,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.channel.send(text);
                 await interaction.reply({
                     content: '✅ Đã gửi tin nhắn!',
-                    flags: MessageFlags.Ephemeral
+                    // flags: MessageFlags.Ephemeral
                 });
                 break;
 
@@ -272,7 +272,6 @@ client.on('interactionCreate', async interaction => {
                 if (user.id !== ADMIN_ID) {
                     await interaction.reply({
                         content: '🚫 **CẢNH BÁO:** Đạo hữu không phải Thiên Đạo! Đừng cố nghịch thiên.',
-                        // flags: MessageFlags.Ephemeral
                     });
                     break;
                 }
