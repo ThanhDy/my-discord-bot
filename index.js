@@ -1,10 +1,11 @@
 // 1. KHAI BÁO THƯ VIỆN
 const { REST, Routes, Client, GatewayIntentBits, MessageFlags } = require('discord.js');
 const http = require('http');
-const fs = require('fs');
+const mongoose = require('mongoose'); // Thay fs bằng mongoose
 
 // 2. CẤU HÌNH TOKEN
 const TOKEN = process.env.TOKEN;
+const MONGO_URI = process.env.MONGO_URI; // Lấy link Mongo từ biến môi trường
 const CLIENT_ID = '1447762452937707681';
 const ADMIN_ID = '685083491552985101';
 
@@ -18,67 +19,43 @@ server.listen(port, '0.0.0.0', () => {
     console.log(`Server is listening on port ${port}`);
 });
 
-// ================= HÀM XỬ LÝ TIỀN TỆ (DATABASE AN TOÀN) =================
-const DATA_FILE = 'money.json';
+// ================= KẾT NỐI MONGODB =================
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('✅ Đã kết nối với MongoDB!'))
+    .catch((err) => console.error('❌ Lỗi kết nối MongoDB:', err));
 
-// Hàm lấy dữ liệu (Đã thêm chống lỗi Crash)
-function getData() {
-    // Nếu file không tồn tại, tạo mới
-    if (!fs.existsSync(DATA_FILE)) {
-        fs.writeFileSync(DATA_FILE, JSON.stringify({}));
-        return {};
-    }
+// Định nghĩa cấu trúc User (Schema)
+const userSchema = new mongoose.Schema({
+    userId: { type: String, required: true, unique: true },
+    balance: { type: Number, default: 0 },
+    lastWork: { type: Number, default: 0 }
+});
 
-    try {
-        const rawData = fs.readFileSync(DATA_FILE);
-        // Nếu file rỗng, trả về object rỗng luôn để tránh lỗi JSON.parse
-        if (rawData.length === 0) {
-            return {};
-        }
-        return JSON.parse(rawData);
-    } catch (error) {
-        console.error("Lỗi đọc file JSON, đang reset database:", error);
-        // Nếu file lỗi (corrupted), reset về rỗng để bot không bị chết
-        fs.writeFileSync(DATA_FILE, JSON.stringify({}));
-        return {};
+const User = mongoose.model('User', userSchema);
+
+// ================= HÀM XỬ LÝ DATABASE (MONGODB) =================
+// Lưu ý: Các hàm này giờ là ASYNC (Bất đồng bộ) nên khi gọi phải có AWAIT
+
+async function getUser(id) {
+    let user = await User.findOne({ userId: id });
+    if (!user) {
+        user = new User({ userId: id, balance: 0, lastWork: 0 });
+        await user.save();
     }
+    return user;
 }
 
-function saveData(data) {
-    try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error("Lỗi khi lưu file:", error);
-    }
+async function updateBalance(id, amount) {
+    const user = await getUser(id);
+    user.balance += amount;
+    await user.save();
+    return user.balance;
 }
 
-function getUser(userId) {
-    const data = getData();
-    // Kiểm tra kỹ cấu trúc dữ liệu để tránh lỗi
-    if (!data[userId] || typeof data[userId] !== 'object') {
-        data[userId] = { balance: 0, lastWork: 0 };
-        saveData(data);
-    }
-    return data[userId];
-}
-
-function updateBalance(userId, amount) {
-    const data = getData();
-    if (!data[userId] || typeof data[userId] !== 'object') {
-        data[userId] = { balance: 0, lastWork: 0 };
-    }
-    data[userId].balance += amount;
-    saveData(data);
-    return data[userId].balance;
-}
-
-function updateLastWork(userId) {
-    const data = getData();
-    if (!data[userId] || typeof data[userId] !== 'object') {
-        data[userId] = { balance: 0, lastWork: 0 };
-    }
-    data[userId].lastWork = Date.now();
-    saveData(data);
+async function updateLastWork(id) {
+    const user = await getUser(id);
+    user.lastWork = Date.now();
+    await user.save();
 }
 
 // ================= KHỞI TẠO BOT =================
@@ -185,7 +162,7 @@ client.on('interactionCreate', async interaction => {
 
     const { commandName, user } = interaction;
 
-    try { // Thêm Try-Catch tổng để bắt mọi lỗi ngầm
+    try {
         switch (commandName) {
 
             case 'hello':
@@ -201,11 +178,13 @@ client.on('interactionCreate', async interaction => {
                 await interaction.channel.send(text);
                 await interaction.reply({
                     content: '✅ Đã gửi tin nhắn!',
+                    flags: MessageFlags.Ephemeral
                 });
                 break;
 
             case 'diemdanh':
-                const userInfo = getUser(user.id);
+                // Sử dụng await vì gọi Database
+                const userInfo = await getUser(user.id);
                 const now = Date.now();
                 const cooldownTime = 24 * 60 * 60 * 1000;
                 const timeDiff = now - userInfo.lastWork;
@@ -222,20 +201,22 @@ client.on('interactionCreate', async interaction => {
                 }
 
                 const luong = Math.floor(Math.random() * (20 - 5 + 1)) + 5;
-                updateBalance(user.id, luong);
-                updateLastWork(user.id);
+                await updateBalance(user.id, luong); // await
+                await updateLastWork(user.id);       // await
                 await interaction.reply(`Điểm danh thành công. Nhận **${luong} Kim Hồn Tệ**!`);
                 break;
 
             case 'tien':
-                const userData = getUser(user.id);
+                // Sử dụng await vì gọi Database
+                const userData = await getUser(user.id);
                 await interaction.reply(`Đạo hữu đang có **${userData.balance.toLocaleString()} Kim Hồn Tệ**`);
                 break;
 
             case 'taixiu':
                 const luaChon = interaction.options.getString('chon');
                 const tienCuoc = interaction.options.getInteger('tiencuoc');
-                const profile = getUser(user.id);
+                // Sử dụng await vì gọi Database
+                const profile = await getUser(user.id);
 
                 if (profile.balance < tienCuoc) {
                     await interaction.reply({
@@ -252,48 +233,55 @@ client.on('interactionCreate', async interaction => {
                 const tenKetQua = (tong >= 11) ? 'TÀI' : 'XỈU';
 
                 if (d1 === d2 && d2 === d3) {
-                    updateBalance(user.id, -tienCuoc);
+                    await updateBalance(user.id, -tienCuoc); // await
                     await interaction.reply(`🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong})\n⚡ **BÃO!** Nhà cái ăn hết.`);
                     break;
                 }
 
                 if (luaChon === ketQuaGame) {
-                    updateBalance(user.id, tienCuoc);
+                    await updateBalance(user.id, tienCuoc); // await
                     await interaction.reply(`🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong} -> **${tenKetQua}**)\n✅ Chọn **${luaChon.toUpperCase()}** -> **THẮNG!** Bú ${tienCuoc} Kim Hồn Tệ`);
                 } else {
-                    updateBalance(user.id, -tienCuoc);
+                    await updateBalance(user.id, -tienCuoc); // await
                     await interaction.reply(`🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong} -> **${tenKetQua}**)\n❌ Chọn **${luaChon.toUpperCase()}** -> **THUA!** Bay ${tienCuoc} Kim Hồn Tệ`);
                 }
                 break;
 
             case 'setmoney':
-                // 1. Kiểm tra quyền Admin (Chỉ ID của bạn mới được dùng)
                 if (user.id !== ADMIN_ID) {
-                    await interaction.reply({
-                        content: '🚫 **CẢNH BÁO:** Đạo hữu không phải Thiên Đạo! Đừng cố nghịch thiên.',
-                    });
+                    await interaction.reply({ content: '🚫 Đạo hữu không phải Thiên Đạo!', flags: MessageFlags.Ephemeral });
                     break;
                 }
 
-                // 2. Lấy thông tin từ lệnh
                 const targetUser = interaction.options.getUser('nguoi_choi');
-                const newAmount = interaction.options.getInteger('so_tien');
+                const amountToAdd = interaction.options.getInteger('so_tien');
 
-                // 3. Can thiệp vào database
-                const targetData = getUser(targetUser.id); // Lấy data người đó
-                targetData.balance = newAmount; // Gán tiền mới
-                saveData(getData()); // Lưu lại ngay lập tức (Lưu ý: hàm saveData phải gọi đúng data tổng)
+                // Lấy user từ DB và cập nhật tiền
+                let targetData = await getUser(targetUser.id);
+                targetData.balance += amountToAdd;
+                await targetData.save();
 
-                // *Mẹo sửa nhanh hàm saveData để dòng trên hoạt động:*
-                // Thay vì gọi saveData(getData()), ta sửa logic update thủ công 1 chút cho an toàn:
-                const allData = getData();
-                if (!allData[targetUser.id]) allData[targetUser.id] = { balance: 0, lastWork: 0 };
-                allData[targetUser.id].balance = newAmount;
-                saveData(allData);
+                // 1. Gửi tin nhắn thông báo ra kênh chat (Dùng channel.send)
+                if (amountToAdd > 0) {
+                    // TRƯỜNG HỢP CỘNG TIỀN
+                    await interaction.channel.send(
+                        `🌅 **THIÊN ĐẠO BAN PHÚC!**\n<@${targetUser.id}> vừa nhận được cơ duyên, túi tiền tăng thêm **${amountToAdd.toLocaleString()} Kim Hồn Tệ**.\n💰 Số dư hiện tại: **${targetData.balance.toLocaleString()}**`
+                    );
+                } else if (amountToAdd < 0) {
+                    // TRƯỜNG HỢP TRỪ TIỀN
+                    const positiveNum = Math.abs(amountToAdd);
+                    await interaction.channel.send(
+                        `⚡ **THIÊN ĐẠO TRỪNG PHẠT!**\n<@${targetUser.id}> làm điều nghịch thiên, bị tước đi **${positiveNum.toLocaleString()} Kim Hồn Tệ**.\n💸 Số dư hiện tại: **${targetData.balance.toLocaleString()}**`
+                    );
+                } else {
+                    await interaction.channel.send(`Thiên Đạo đi ngang qua <@${targetUser.id}> nhưng không làm gì cả.`);
+                }
 
-                await interaction.reply(
-                    `<@${targetUser.id}> một bước Hoá Thần, nhận **${newAmount.toLocaleString()} Kim Hồn Tệ**.`
-                );
+                // 2. Báo riêng cho Admin biết là lệnh đã chạy xong (Bắt buộc phải có để không lỗi)
+                await interaction.reply({
+                    content: '✅ Đã thực hiện lệnh thành công!',
+                    flags: MessageFlags.Ephemeral
+                });
                 break;
 
             default:
@@ -301,9 +289,8 @@ client.on('interactionCreate', async interaction => {
         }
     } catch (err) {
         console.error(err);
-        // Nếu có lỗi bất ngờ, báo cho user biết thay vì im lặng
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: 'Có lỗi xảy ra khi xử lý lệnh! (Lỗi Database đã được ghi lại)', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: 'Có lỗi xảy ra khi xử lý lệnh! (Server Database có thể đang bận)', flags: MessageFlags.Ephemeral });
         }
     }
 });
