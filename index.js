@@ -1,7 +1,7 @@
 const { REST, Routes, Client, GatewayIntentBits } = require('discord.js');
 
 // --- CẤU HÌNH ---
-const TOKEN = 'MTQ0Nzc2MjQ1MjkzNzcwNzY4MQ.GNsUK6.MEa2CBGG5YJ-O-LW0BYIIhmgl6coHNJDcHiTaw';      // Token của Bot
+const TOKEN = process.env.TOKEN;      // Token của Bot
 const CLIENT_ID = '1447762452937707681'; // Application ID 
 
 const client = new Client({
@@ -82,4 +82,4 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.login(process.env.TOKEN);
+client.login(TOKEN);
