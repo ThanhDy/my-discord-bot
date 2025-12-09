@@ -42,7 +42,7 @@ const commands = [
     },
     {
         name: 'diemdanh',
-        description: 'Điểm danh mỗi ngày',
+        description: 'Điểm danh mỗi ngày (tính năng sắp ra mắt)',
     },
     {
         name: 'donate',
