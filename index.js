@@ -57,7 +57,9 @@ function updateBalance(userId, amount) {
 // Cập nhật thời gian làm việc
 function updateLastWork(userId) {
     const data = getData();
-    if (!data[userId]) data[userId] = { balance: 0, lastWork: 0 };
+    if (!data[userId] || typeof data[userId] !== 'object') {
+        data[userId] = { balance: 0, lastWork: 0 };
+    }
 
     data[userId].lastWork = Date.now(); // Lưu thời gian hiện tại (tính bằng mili giây)
     saveData(data);
@@ -100,7 +102,7 @@ const commands = [
     },
     {
         name: 'taixiu', // Lệnh chơi game
-        description: 'Chơi tài xỉu: 3-10 là Xỉu, 11-18 là Tài',
+        description: 'Chơi tài xỉu',
         options: [
             {
                 name: 'chon',
@@ -108,8 +110,8 @@ const commands = [
                 type: 3, // String
                 required: true,
                 choices: [
-                    { name: 'Tài (11-18)', value: 'tai' },
-                    { name: 'Xỉu (3-10)', value: 'xiu' }
+                    { name: 'Tài', value: 'tai' },
+                    { name: 'Xỉu', value: 'xiu' }
                 ]
             },
             {
@@ -148,7 +150,9 @@ client.once('ready', () => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    switch (interaction.commandName) {
+    const { commandName, user } = interaction;
+
+    switch (commandName) {
 
         case 'hello':
             await interaction.reply('Ta là Thiên Mộng Ca');
@@ -197,17 +201,17 @@ client.on('interactionCreate', async interaction => {
             break;
 
         case 'tien':
-            const tien = getBalance(user.id);
-            await interaction.reply(`Bạn đang có **${tien.toLocaleString()} Kim Hồn Tệ**`);
+            const userData = getUser(user.id);
+            await interaction.reply(`Bạn đang có **${userData.balance.toLocaleString()} Kim Hồn Tệ**`);
             break;
 
         case 'taixiu':
             const luaChon = interaction.options.getString('chon');
             const tienCuoc = interaction.options.getInteger('tiencuoc');
-            const tienHienCo = getBalance(user.id);
+            const profile = getUser(user.id);
 
             // Kiểm tra đủ tiền không
-            if (tienHienCo < tienCuoc) {
+            if (profile.balance < tienCuoc) {
                 await interaction.reply({
                     content: `Nghèo vailol đòi chơi game`,
                     flags: MessageFlags.Ephemeral
@@ -227,7 +231,7 @@ client.on('interactionCreate', async interaction => {
             if (d1 === d2 && d2 === d3) {
                 updateBalance(user.id, -tienCuoc);
                 await interaction.reply(
-                    `🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong})\n⚡ **BÃO!** Nhà cái ăn hết.\n💸 Bạn trắng tay**.`
+                    `🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong})\n⚡ **BÃO!** Tuổi gì ăn ta**.`
                 );
                 break;
             }
