@@ -1,49 +1,28 @@
-// --- Code giữ cho Render không tắt Bot ---
-const http = require('http');
-const port = process.env.PORT || 3000;
+// 1. KHAI BÁO THƯ VIỆN
+const { REST, Routes, Client, GatewayIntentBits, MessageFlags } = require('discord.js');
+const http = require('http'); // Thêm thư viện http để tạo server giả
 
+// 2. CẤU HÌNH TOKEN (Lấy từ biến môi trường Render)
+const TOKEN = process.env.TOKEN;
+const CLIENT_ID = '1447762452937707681'; // ID Bot của bạn
+
+// 3. TẠO SERVER GIẢ LẬP (Để Render không tắt Bot - Fix lỗi Port scan timeout)
+const port = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
     res.writeHead(200);
-    res.end('Bot Discord đang hoạt động!');
+    res.end('Bot Discord dang hoat dong!');
 });
-
 server.listen(port, () => {
-    console.log(`Server giả lập đang chạy trên port ${port} để giữ bot online trên Render.`);
+    console.log(`Server gia lap dang chay tren port ${port}`);
 });
-// ----------------------------------------
 
-const { REST, Routes, Client, GatewayIntentBits, MessageFlags } = require('discord.js');
 
-// --- CẤU HÌNH ---
-const TOKEN = process.env.TOKEN;      // Token của Bot
-const CLIENT_ID = '1447762452937707681'; // Application ID 
+
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds] // Slash command chỉ cần quyền Guilds
 });
-
-// 2. Hàm đăng ký lệnh lên Server của Discord
-const rest = new REST({ version: '10' }).setToken(TOKEN);
-
-(async () => {
-    try {
-        console.log('Đang đăng ký lệnh Slash (/) ...');
-
-        await rest.put(
-            Routes.applicationCommands(CLIENT_ID),
-            { body: commands },
-        );
-
-        console.log('Đã đăng ký lệnh thành công! Hãy vào Discord thử gõ /');
-    } catch (error) {
-        console.error(error);
-    }
-})();
-
-client.once('ready', () => {
-    console.log(`Bot ${client.user.tag} đã online!`);
-});
-
+// 1. Định nghĩa lệnh Slash (/) cho bot
 const commands = [
     {
         name: 'hello',
@@ -66,6 +45,28 @@ const commands = [
         description: 'Điểm danh mỗi ngày',
     },
 ];
+
+// 2. Hàm đăng ký lệnh lên Server của Discord
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+
+(async () => {
+    try {
+        console.log('Đang đăng ký lệnh Slash (/) ...');
+
+        await rest.put(
+            Routes.applicationCommands(CLIENT_ID),
+            { body: commands },
+        );
+
+        console.log('Đã đăng ký lệnh thành công! Hãy vào Discord thử gõ /');
+    } catch (error) {
+        console.error(error);
+    }
+})();
+
+client.once('ready', () => {
+    console.log(`Bot ${client.user.tag} đã online!`);
+});
 
 client.on('interactionCreate', async interaction => {
     // Nếu không phải là lệnh Slash thì bỏ qua
