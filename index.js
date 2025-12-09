@@ -197,7 +197,7 @@ client.on('interactionCreate', async interaction => {
                     const hours = Math.floor(timeLeft / (1000 * 60 * 60));
                     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
                     await interaction.reply({
-                        content: `Bạn đã điểm danh rồi! Quay lại sau **${hours}h ${minutes}p** nữa nhé.`,
+                        content: `Đạo hữu đã điểm danh rồi! Quay lại sau **${hours}h ${minutes}p** nữa nhé.`,
                         flags: MessageFlags.Ephemeral
                     });
                     break;
@@ -211,7 +211,7 @@ client.on('interactionCreate', async interaction => {
 
             case 'tien':
                 const userData = getUser(user.id);
-                await interaction.reply(`Bạn đang có **${userData.balance.toLocaleString()} Kim Hồn Tệ**`);
+                await interaction.reply(`Đạo hữu đang có **${userData.balance.toLocaleString()} Kim Hồn Tệ**`);
                 break;
 
             case 'taixiu':
@@ -221,8 +221,7 @@ client.on('interactionCreate', async interaction => {
 
                 if (profile.balance < tienCuoc) {
                     await interaction.reply({
-                        content: `Nghèo vailol đòi chơi game! Bạn chỉ có ${profile.balance} tiền.`,
-                        flags: MessageFlags.Ephemeral
+                        content: `Nghèo vailol đòi chơi game!`,
                     });
                     break;
                 }
@@ -242,10 +241,10 @@ client.on('interactionCreate', async interaction => {
 
                 if (luaChon === ketQuaGame) {
                     updateBalance(user.id, tienCuoc);
-                    await interaction.reply(`🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong} -> **${tenKetQua}**)\n✅ Chọn **${luaChon.toUpperCase()}** -> **THẮNG!** (+${tienCuoc})`);
+                    await interaction.reply(`🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong} -> **${tenKetQua}**)\n✅ Chọn **${luaChon.toUpperCase()}** -> **THẮNG!** Bú ${tienCuoc} Kim Hồn Tệ`);
                 } else {
                     updateBalance(user.id, -tienCuoc);
-                    await interaction.reply(`🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong} -> **${tenKetQua}**)\n❌ Chọn **${luaChon.toUpperCase()}** -> **THUA!** (-${tienCuoc})`);
+                    await interaction.reply(`🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong} -> **${tenKetQua}**)\n❌ Chọn **${luaChon.toUpperCase()}** -> **THUA!** Bay ${tienCuoc} Kim Hồn Tệ`);
                 }
                 break;
 
