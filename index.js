@@ -1,4 +1,18 @@
-const { REST, Routes, Client, GatewayIntentBits } = require('discord.js');
+// --- Code giữ cho Render không tắt Bot ---
+const http = require('http');
+const port = process.env.PORT || 3000;
+
+const server = http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end('Bot Discord đang hoạt động!');
+});
+
+server.listen(port, () => {
+    console.log(`Server giả lập đang chạy trên port ${port} để giữ bot online trên Render.`);
+});
+// ----------------------------------------
+
+const { REST, Routes, Client, GatewayIntentBits, MessageFlags } = require('discord.js');
 
 // --- CẤU HÌNH ---
 const TOKEN = process.env.TOKEN;      // Token của Bot
@@ -68,8 +82,8 @@ client.on('interactionCreate', async interaction => {
             const text = interaction.options.getString('noidung');
             await interaction.channel.send(text);
             await interaction.reply({
-                content: '✅ Đã gửi tin nhắn ẩn danh thành công!',
-                ephemeral: true
+                content: '✅ Đã gửi tin nhắn!',
+                flags: MessageFlags.Ephemeral
             });
             break;
 
