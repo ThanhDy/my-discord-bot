@@ -6,6 +6,7 @@ const fs = require('fs');
 // 2. CẤU HÌNH TOKEN
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = '1447762452937707681';
+const ADMIN_ID = '685083491552985101';
 
 // 3. TẠO SERVER GIẢ LẬP (QUAN TRỌNG: Để server lên đầu để Render nhận diện ngay)
 const port = process.env.PORT || 3000;
@@ -138,6 +139,24 @@ const commands = [
             }
         ]
     },
+    {
+        name: 'setmoney',
+        description: 'ADMIN ONLY: Chỉnh sửa số tiền của người chơi',
+        options: [
+            {
+                name: 'nguoi_choi',
+                description: 'Chọn người cần chỉnh tiền',
+                type: 6, // Type 6 là USER (Người dùng)
+                required: true
+            },
+            {
+                name: 'so_tien',
+                description: 'Nhập số tiền mong muốn (Nhập số âm để trừ)',
+                type: 4, // Integer
+                required: true
+            }
+        ]
+    },
 ];
 
 // 5. ĐĂNG KÝ LỆNH
@@ -246,6 +265,37 @@ client.on('interactionCreate', async interaction => {
                     updateBalance(user.id, -tienCuoc);
                     await interaction.reply(`🎲 **${d1}-${d2}-${d3}** (Tổng: ${tong} -> **${tenKetQua}**)\n❌ Chọn **${luaChon.toUpperCase()}** -> **THUA!** Bay ${tienCuoc} Kim Hồn Tệ`);
                 }
+                break;
+
+            case 'setmoney':
+                // 1. Kiểm tra quyền Admin (Chỉ ID của bạn mới được dùng)
+                if (user.id !== ADMIN_ID) {
+                    await interaction.reply({
+                        content: '🚫 **CẢNH BÁO:** Đạo hữu không phải Thiên Đạo! Đừng cố nghịch thiên.',
+                        // flags: MessageFlags.Ephemeral
+                    });
+                    break;
+                }
+
+                // 2. Lấy thông tin từ lệnh
+                const targetUser = interaction.options.getUser('nguoi_choi');
+                const newAmount = interaction.options.getInteger('so_tien');
+
+                // 3. Can thiệp vào database
+                const targetData = getUser(targetUser.id); // Lấy data người đó
+                targetData.balance = newAmount; // Gán tiền mới
+                saveData(getData()); // Lưu lại ngay lập tức (Lưu ý: hàm saveData phải gọi đúng data tổng)
+
+                // *Mẹo sửa nhanh hàm saveData để dòng trên hoạt động:*
+                // Thay vì gọi saveData(getData()), ta sửa logic update thủ công 1 chút cho an toàn:
+                const allData = getData();
+                if (!allData[targetUser.id]) allData[targetUser.id] = { balance: 0, lastWork: 0 };
+                allData[targetUser.id].balance = newAmount;
+                saveData(allData);
+
+                await interaction.reply(
+                    `<@${targetUser.id}> một bước Hoá Thần, nhận **${newAmount.toLocaleString()} Kim Hồn Tệ**.`
+                );
                 break;
 
             default:
