@@ -396,4 +396,8 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.login(TOKEN);
+console.log('🤖 Đang tiến hành đăng nhập vào Discord...');
+
+client.login(TOKEN).catch(err => {
+    console.error('❌ LỖI ĐĂNG NHẬP:', err);
+});
