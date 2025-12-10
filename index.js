@@ -5,6 +5,7 @@ const mongoose = require('mongoose'); // Thay fs bằng mongoose
 
 // 2. CẤU HÌNH TOKEN
 const TOKEN = process.env.TOKEN;
+console.log('Kiểm tra Token:', TOKEN ? 'Đã có Token' : 'Token đang bị RỖNG!');
 const MONGO_URI = process.env.MONGO_URI; // Lấy link Mongo từ biến môi trường
 const CLIENT_ID = '1447762452937707681';
 const ADMIN_ID = '685083491552985101';
@@ -386,8 +387,11 @@ client.on('interactionCreate', async interaction => {
         }
     } catch (err) {
         console.error(err);
-        if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: 'Có lỗi xảy ra khi xử lý lệnh! (Server Database có thể đang bận)', flags: MessageFlags.Ephemeral });
+        // Kiểm tra: Nếu đã trả lời rồi thì dùng followUp, chưa trả lời thì dùng reply
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: 'Có lỗi xảy ra! (Bot đã ghi nhận)', flags: MessageFlags.Ephemeral });
+        } else {
+            await interaction.reply({ content: 'Có lỗi hệ thống xảy ra!', flags: MessageFlags.Ephemeral });
         }
     }
 });
