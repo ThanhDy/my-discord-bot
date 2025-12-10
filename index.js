@@ -8,6 +8,7 @@ const TOKEN = process.env.TOKEN;
 const MONGO_URI = process.env.MONGO_URI; // Lấy link Mongo từ biến môi trường
 const CLIENT_ID = '1447762452937707681';
 const ADMIN_ID = '685083491552985101';
+const GUILD_ID = '1237804613986418698';
 
 // 3. TẠO SERVER GIẢ LẬP (QUAN TRỌNG: Để server lên đầu để Render nhận diện ngay)
 const port = process.env.PORT || 3000;
@@ -162,12 +163,12 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
     try {
         console.log('Đang đăng ký lệnh Slash (/) ...');
         await rest.put(
-            Routes.applicationCommands(CLIENT_ID),
+            Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
             { body: commands },
         );
         console.log('Đã đăng ký lệnh thành công!');
     } catch (error) {
-        console.error(error);
+        console.error('Lỗi đăng ký lệnh:', error);
     }
 })();
 
