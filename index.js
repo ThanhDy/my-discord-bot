@@ -228,7 +228,7 @@ client.on('interactionCreate', async interaction => {
                     break;
                 }
 
-                const luong = Math.floor(Math.random() * (20 - 5 + 1)) + 5;
+                const luong = Math.floor(Math.random() * (50000 - 10000 + 1)) + 10000;
                 await updateBalance(user.id, luong); // await
                 await updateLastWork(user.id);       // await
                 await interaction.reply(`Điểm danh thành công. Nhận **${luong} Kim Hồn Tệ**!`);
