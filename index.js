@@ -157,19 +157,29 @@ const commands = [
     },
 ];
 
-// 5. ĐĂNG KÝ LỆNH
+// 5. ĐĂNG KÝ LỆNH & DỌN DẸP LỆNH CŨ
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 (async () => {
     try {
-        console.log('Đang đăng ký lệnh Slash (/) ...');
+        console.log('♻️ Đang dọn dẹp các lệnh Global cũ (để tránh trùng lặp)...');
+        // Dòng này sẽ xóa toàn bộ lệnh Global cũ đi
+        await rest.put(
+            Routes.applicationCommands(CLIENT_ID),
+            { body: [] },
+        );
+        console.log('✅ Đã xóa lệnh Global cũ thành công!');
+
+        console.log('⏳ Đang đăng ký lệnh mới cho Server...');
+        // Đăng ký lại lệnh mới cho riêng Server (Chạy nhanh hơn)
         await rest.put(
             Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
             { body: commands },
         );
-        console.log('Đã đăng ký lệnh thành công!');
+        console.log('🎉 Đã đăng ký lệnh Guild thành công!');
+
     } catch (error) {
-        console.error('Lỗi đăng ký lệnh:', error);
+        console.error('❌ Lỗi đăng ký lệnh:', error);
     }
 })();
 
