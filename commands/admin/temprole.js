@@ -6,7 +6,7 @@ const FIXED_ROLE_ID = '1379114634568536144';
 
 module.exports = {
     data: {
-        name: 'temprole',
+        name: 'ban',
         description: 'Gắn Role cố định cho user trong thời gian nhất định',
         options: [
             { name: 'user', description: 'Người cần gắn role', type: 6, required: true },
