@@ -18,6 +18,14 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
+const tempRoleSchema = new mongoose.Schema({
+    userId: { type: String, required: true },
+    roleId: { type: String, required: true },
+    guildId: { type: String, required: true },
+    expiresAt: { type: Number, required: true } // Thời gian hết hạn (Timestamp)
+});
+const TempRole = mongoose.model('TempRole', tempRoleSchema);
+
 // Các hàm xử lý
 async function getUser(id) {
     let user = await User.findOne({ userId: id });
@@ -41,5 +49,24 @@ async function updateLastWork(id) {
     await user.save();
 }
 
+
+// 2. Hàm thêm Role tạm
+async function addTempRole(guildId, userId, roleId, durationMinutes) {
+    const expiresAt = Date.now() + (durationMinutes * 60 * 1000);
+    const tempRole = new TempRole({ guildId, userId, roleId, expiresAt });
+    await tempRole.save();
+    return expiresAt;
+}
+
+// 3. Hàm lấy các Role đã hết hạn (để xóa)
+async function getExpiredRoles() {
+    const now = Date.now();
+    return await TempRole.find({ expiresAt: { $lte: now } });
+}
+
+// 4. Hàm xóa record khỏi DB sau khi đã gỡ role
+async function deleteTempRole(id) {
+    await TempRole.findByIdAndDelete(id);
+}
 // Xuất ra để các file khác dùng
-module.exports = { connectDB, getUser, updateBalance, updateLastWork };
+module.exports = { connectDB, getUser, updateBalance, updateLastWork, addTempRole, getExpiredRoles, deleteTempRole };

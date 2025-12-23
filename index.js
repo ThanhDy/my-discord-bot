@@ -3,7 +3,7 @@ const { REST, Routes, Client, GatewayIntentBits, Collection, EmbedBuilder } = re
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { connectDB } = require('./database'); // Gọi file Database
+const { connectDB, getExpiredRoles, deleteTempRole } = require('./database'); // Gọi file Database
 
 // 2. CẤU HÌNH TOKEN
 const TOKEN = process.env.TOKEN;
@@ -66,6 +66,39 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 // 7. XỬ LÝ SỰ KIỆN
 client.once('ready', () => {
     console.log(`Bot ${client.user.tag} đã online!`);
+
+    // --- TÍNH NĂNG QUÉT ROLE HẾT HẠN (CHẠY MỖI 60 GIÂY) ---
+    setInterval(async () => {
+        try {
+            // 1. Lấy danh sách các role đã hết hạn từ DB
+            const expiredRoles = await getExpiredRoles();
+
+            for (const record of expiredRoles) {
+                const guild = client.guilds.cache.get(record.guildId);
+                if (!guild) {
+                    // Nếu bot bị kick khỏi server thì xóa record luôn
+                    await deleteTempRole(record._id);
+                    continue;
+                }
+
+                try {
+                    // 2. Tìm thành viên và gỡ role
+                    const member = await guild.members.fetch(record.userId).catch(() => null);
+                    if (member) {
+                        await member.roles.remove(record.roleId).catch(err => console.log("Không gỡ được role (thiếu quyền?):", err));
+                        console.log(`[AUTO] Đã gỡ role ${record.roleId} của ${member.user.tag}`);
+                    }
+                } catch (err) {
+                    console.error('Lỗi khi xử lý gỡ role:', err);
+                }
+
+                // 3. Xóa record khỏi Database sau khi xử lý xong
+                await deleteTempRole(record._id);
+            }
+        } catch (err) {
+            console.error('Lỗi trong vòng lặp quét role:', err);
+        }
+    }, 60 * 1000); // 60000ms = 1 phút quét 1 lần
 });
 
 client.on('interactionCreate', async interaction => {
