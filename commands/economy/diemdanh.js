@@ -37,12 +37,13 @@ module.exports = {
             // Mốc reset tiếp theo là mốc cũ + 24h
             const nextResetTimestamp = lastResetTimestamp + (24 * 60 * 60 * 1000);
 
-            // Chuyển sang Unix Timestamp (giây) cho Discord
+            // Chuyển sang Unix Timestamp (giây)
             const discordTimestamp = Math.floor(nextResetTimestamp / 1000);
 
-            // Dùng <t:time:R> để Discord tự đếm ngược
             return interaction.reply({
-                content: `🚫 Đạo hữu đã điểm danh hôm nay rồi! Hãy quay lại vào **<t:${discordTimestamp}:t>** (<t:${discordTimestamp}:R>).`,
+                // <t:timestamp:t> -> Hiển thị giờ ngắn (VD: 05:00)
+                // <t:timestamp:R> -> Hiển thị đếm ngược (VD: còn 10 giờ nữa)
+                content: `🚫 Đạo hữu đã điểm danh hôm nay rồi! Hãy quay lại vào lúc **<t:${discordTimestamp}:t>** ngày mai (còn <t:${discordTimestamp}:T> nữa).`,
                 flags: MessageFlags.Ephemeral
             });
         }
