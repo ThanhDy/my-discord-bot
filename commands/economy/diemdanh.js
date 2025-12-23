@@ -2,47 +2,58 @@ const { getUser, updateBalance, updateLastWork } = require('../../database');
 const { MessageFlags } = require('discord.js');
 
 module.exports = {
-    data: { name: 'diemdanh', description: 'Điểm danh mỗi ngày (Reset lúc 5h sáng)' },
+    data: { name: 'diemdanh', description: 'Điểm danh mỗi ngày (Reset lúc 5h sáng VN)' },
     async execute(interaction) {
         const userInfo = await getUser(interaction.user.id);
-        const lastWorkTime = userInfo.lastWork; // Thời gian điểm danh lần cuối
+        const lastWorkTime = userInfo.lastWork || 0;
 
-        // 1. Tính toán mốc 5h sáng của chu kỳ hiện tại
+        // --- BẮT ĐẦU LOGIC TÍNH GIỜ ---
         const now = new Date();
-        // Chuyển giờ hiện tại về múi giờ Việt Nam (UTC+7) để tính toán cho chuẩn nếu server đặt ở nước ngoài
-        // (Tuy nhiên Date.now() trả về timestamp quốc tế nên ta so sánh timestamp là an toàn nhất)
 
-        // Tạo mốc reset: 5h sáng hôm nay
-        let resetTime = new Date();
-        resetTime.setHours(5, 0, 0, 0);
+        // 1. Giả lập giờ Việt Nam (UTC+7) để lấy đúng ngày/giờ "mặt số"
+        // (Cộng 7 tiếng vào giờ UTC hiện tại)
+        const OFFSET_VN = 7 * 60 * 60 * 1000;
+        const nowVN = new Date(now.getTime() + OFFSET_VN);
 
-        // Nếu bây giờ là 2h sáng (nhỏ hơn 5h) -> Mốc reset phải là 5h sáng HÔM QUA
-        if (now < resetTime) {
-            resetTime.setDate(resetTime.getDate() - 1);
+        // 2. Tạo mốc 5h sáng của ngày hiện tại (theo giờ VN)
+        // Lưu ý: Dùng các hàm getUTC/setUTC để thao tác trên timestamp đã cộng offset
+        let resetTimeVN = new Date(nowVN);
+        resetTimeVN.setUTCHours(5, 0, 0, 0);
+
+        // 3. Logic "qua ngày":
+        // Nếu giờ hiện tại (VN) nhỏ hơn 5h sáng -> Mốc reset tính là 5h sáng HÔM QUA
+        if (nowVN.getUTCHours() < 5) {
+            resetTimeVN.setUTCDate(resetTimeVN.getUTCDate() - 1);
         }
 
-        // 2. Kiểm tra điều kiện
-        // Nếu lần điểm danh cuối cùng diễn ra SAU mốc reset -> Nghĩa là hôm nay đã điểm danh rồi
-        if (lastWorkTime > resetTime.getTime()) {
-            // Tính thời gian đến đợt reset tiếp theo (5h sáng ngày mai)
-            const nextReset = new Date(resetTime);
-            nextReset.setDate(nextReset.getDate() + 1);
+        // 4. Chuyển mốc reset về Timestamp thực tế (Trừ lại 7 tiếng offset đã cộng lúc đầu)
+        // Đây là mốc thời gian thực tế của 5h sáng gần nhất
+        const lastResetTimestamp = resetTimeVN.getTime() - OFFSET_VN;
 
-            const timeLeft = nextReset - now;
-            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        // --- KẾT THÚC LOGIC TÍNH GIỜ ---
 
+        // Kiểm tra: Nếu lần làm việc cuối > mốc reset gần nhất -> Đã làm rồi
+        if (lastWorkTime > lastResetTimestamp) {
+            // Mốc reset tiếp theo là mốc cũ + 24h
+            const nextResetTimestamp = lastResetTimestamp + (24 * 60 * 60 * 1000);
+
+            // Chuyển sang Unix Timestamp (giây) cho Discord
+            const discordTimestamp = Math.floor(nextResetTimestamp / 1000);
+
+            // Dùng <t:time:R> để Discord tự đếm ngược
             return interaction.reply({
-                content: `🌅 Đạo hữu đã điểm danh ngày hôm nay rồi! Hãy quay lại sau **5h sáng mai** (còn khoảng **${hours}h ${minutes}p** nữa).`,
+                content: `🚫 Đạo hữu đã điểm danh hôm nay rồi! Hãy quay lại vào **<t:${discordTimestamp}:t>** (<t:${discordTimestamp}:R>).`,
                 flags: MessageFlags.Ephemeral
             });
         }
 
-        // 3. Thực hiện điểm danh
+        // Thực hiện điểm danh
         const luong = Math.floor(Math.random() * (50000 - 10000 + 1)) + 10000;
         await updateBalance(interaction.user.id, luong);
-        await updateLastWork(interaction.user.id);
 
-        await interaction.reply(`✅ **ĐIỂM DANH THÀNH CÔNG!**\nĐạo hữu vừa nhận được **${luong.toLocaleString()} Kim Hồn Tệ** cho ngày hôm nay.`);
+        // Lưu thời gian thực (now) vào database
+        await updateLastWork(interaction.user.id); // Code cũ của bạn có thể cần truyền tham số thời gian vào đây nếu hàm updateLastWork không tự lấy Date.now()
+
+        await interaction.reply(`✅ **ĐIỂM DANH THÀNH CÔNG!**\nĐạo hữu vừa nhận được **${luong.toLocaleString('vi-VN')} Kim Hồn Tệ** cho ngày hôm nay.`);
     }
 };

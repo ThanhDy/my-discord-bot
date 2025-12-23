@@ -43,7 +43,7 @@ for (const folder of commandFolders) {
         if ('data' in command && 'execute' in command) {
             client.commands.set(command.data.name, command);
             commandsData.push(command.data);
-            console.log(`   -> Đã nạp: ${command.data.name}`);
+            // console.log(`   -> Đã nạp: ${command.data.name}`);
         }
     }
 }
