@@ -84,52 +84,55 @@ let dictionaryArray = [];        // Dùng để Random từ
 // Hàm tải từ điển
 async function loadDictionary() {
     console.log('⏳ Đang tải từ điển Tiếng Việt...');
-    // Link mới (ổn định hơn)
-    const url = 'https://raw.githubusercontent.com/nguyenvanduocit/vietnamese-wordlist/master/Viet74K.txt';
+
+    // LINK CHÍNH (Sửa lại đúng username: duyet)
+    const url = 'https://raw.githubusercontent.com/duyet/vietnamese-wordlist/master/Viet74K.txt';
 
     return new Promise((resolve, reject) => {
         https.get(url, (res) => {
-            // 1. Kiểm tra xem link có sống không (Status code phải là 200)
             if (res.statusCode !== 200) {
-                console.error(`❌ Lỗi tải từ điển! Mã lỗi: ${res.statusCode}`);
-                // Fallback: Nếu lỗi thì dùng danh sách từ dự phòng nhỏ
-                dictionaryArray = ['thiên nhiên', 'nhiên liệu', 'con gà', 'gà mái', 'mái nhà', 'nhà cửa'];
-                dictionaryArray.forEach(w => dictionarySet.add(w));
-                resolve();
+                console.error(`❌ Link chính bị lỗi (Mã: ${res.statusCode}). Đang thử link dự phòng...`);
+                // LINK DỰ PHÒNG (Nếu link trên chết thì dùng link này)
+                const backupUrl = 'https://raw.githubusercontent.com/undertheseanlp/dictionary/master/dictionary/words.txt';
+
+                https.get(backupUrl, (resBackup) => {
+                    if (resBackup.statusCode !== 200) {
+                        console.error('❌ Cả 2 link đều hỏng. Sử dụng từ điển mặc định nhỏ.');
+                        dictionaryArray = ['thiên nhiên', 'nhiên liệu', 'con gà', 'gà mái', 'mái nhà', 'nhà cửa', 'vui vẻ', 'học tập', 'thông minh'];
+                        dictionaryArray.forEach(w => dictionarySet.add(w));
+                        resolve();
+                        return;
+                    }
+                    processData(resBackup, resolve);
+                }).on('error', () => resolve());
                 return;
             }
-
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-
-            res.on('end', () => {
-                const words = data.split('\n');
-                dictionaryArray = []; // Reset mảng
-
-                words.forEach(word => {
-                    const cleanWord = word.trim().toLowerCase();
-                    // Chỉ lấy từ ghép (có dấu cách) để chơi nối từ
-                    if (cleanWord && cleanWord.includes(' ')) {
-                        dictionarySet.add(cleanWord);
-                        dictionaryArray.push(cleanWord);
-                    }
-                });
-
-                // Log ra để kiểm tra xem có bị lỗi 404 nữa không
-                console.log(`✅ Đã tải xong: ${dictionaryArray.length} từ ghép!`);
-                if (dictionaryArray.length > 0) {
-                    console.log(`🔍 Ví dụ từ đầu tiên: "${dictionaryArray[0]}"`); // Phải là từ tiếng Việt, không phải "404"
-                }
-                resolve();
-            });
-
+            processData(res, resolve);
         }).on('error', (err) => {
-            console.error('❌ Lỗi kết nối mạng khi tải từ điển:', err);
-            // Fallback dự phòng
-            dictionaryArray = ['thiên nhiên', 'vui vẻ', 'học tập'];
+            console.error('❌ Lỗi kết nối mạng:', err);
             resolve();
         });
     });
+
+    // Hàm xử lý dữ liệu tải về
+    function processData(response, resolve) {
+        let data = '';
+        response.on('data', (chunk) => data += chunk);
+        response.on('end', () => {
+            const words = data.split('\n');
+            dictionaryArray = [];
+            words.forEach(word => {
+                const cleanWord = word.trim().toLowerCase();
+                if (cleanWord && cleanWord.includes(' ')) {
+                    dictionarySet.add(cleanWord);
+                    dictionaryArray.push(cleanWord);
+                }
+            });
+            console.log(`✅ Đã tải xong: ${dictionaryArray.length} từ ghép!`);
+            if (dictionaryArray.length > 0) console.log(`🔍 Test từ đầu tiên: "${dictionaryArray[0]}"`);
+            resolve();
+        });
+    }
 }
 
 // Hàm kiểm tra từ tồn tại
