@@ -4,7 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { connectDB, loadDictionary, checkDictionary, getGame, updateGame, updateBalance,
-    checkDictionary, checkDeadEnd, // <--- Import thêm checkDeadEnd
+    checkDictionary, checkDeadEnd,
     createGame, getRandomWord, stopGame } = require('./database');
 
 // 2. CẤU HÌNH TOKEN
