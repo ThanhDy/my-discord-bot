@@ -36,42 +36,6 @@ const noituSchema = new mongoose.Schema({
 });
 const NoiTu = mongoose.model('NoiTu', noituSchema);
 
-// ================= 3. HÀM TỪ ĐIỂN (QUAN TRỌNG) =================
-let dictionarySet = new Set(); // Bộ nhớ lưu từ điển (RAM)
-
-// Hàm tải từ điển từ GitHub khi bot chạy
-async function loadDictionary() {
-    console.log('⏳ Đang tải từ điển Tiếng Việt (74k từ)...');
-    const url = 'https://raw.githubusercontent.com/duync/vietnamese-wordlist/master/Viet74K.txt';
-
-    return new Promise((resolve, reject) => {
-        https.get(url, (res) => {
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-            res.on('end', () => {
-                const words = data.split('\n');
-                words.forEach(word => {
-                    // Chuẩn hóa: chữ thường, xóa khoảng trắng thừa
-                    const cleanWord = word.trim().toLowerCase();
-                    if (cleanWord) dictionarySet.add(cleanWord);
-                });
-                console.log(`✅ Đã tải xong từ điển: ${dictionarySet.size} từ!`);
-                resolve();
-            });
-        }).on('error', (err) => {
-            console.error('❌ Lỗi tải từ điển:', err);
-            reject(err);
-        });
-    });
-}
-
-// Hàm kiểm tra từ có tồn tại không
-function checkDictionary(word) {
-    // Nếu từ điển chưa tải xong hoặc rỗng thì cho qua (để tránh lỗi game)
-    if (dictionarySet.size === 0) return true;
-    return dictionarySet.has(word.toLowerCase());
-}
-
 // Các hàm xử lý
 async function getUser(id) {
     let user = await User.findOne({ userId: id });
