@@ -3,9 +3,7 @@ const { REST, Routes, Client, GatewayIntentBits, Collection, EmbedBuilder } = re
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { connectDB, loadDictionary, checkDictionary, getGame, updateGame, updateBalance,
-    checkDictionary, checkDeadEnd,
-    createGame, getRandomWord, stopGame } = require('./database');
+const { connectDB, loadDictionary, checkDictionary, getGame, updateGame, updateBalance, checkDeadEnd, createGame, getRandomWord, stopGame } = require('./database');
 
 // 2. CẤU HÌNH TOKEN
 const TOKEN = process.env.TOKEN;
@@ -171,7 +169,7 @@ client.on('messageCreate', async message => {
     // Kiểm tra từ điển
     if (!checkDictionary(content)) {
         await message.reply(`🚫 Từ **"${content}"** không có trong từ điển!`);
-        await message.react('⚠️');
+        await message.react('❌');
         return;
     }
 
