@@ -140,6 +140,41 @@ function checkDeadEnd(syllable) {
     return !hasNextWord;
 }
 
+// ================= [MISSING PART] HÀM XỬ LÝ GAME NỐI TỪ =================
+// (Phần bạn bị thiếu đây)
+
+async function getGame(channelId) {
+    return await NoiTu.findOne({ channelId });
+}
+
+async function createGame(channelId, startWord) {
+    // Xóa game cũ nếu có
+    await NoiTu.findOneAndDelete({ channelId });
+    // Tạo game mới
+    const newGame = new NoiTu({
+        channelId,
+        lastWord: startWord.toLowerCase(),
+        lastUser: '',
+        turnCount: 1
+    });
+    await newGame.save();
+    return newGame;
+}
+
+async function stopGame(channelId) {
+    await NoiTu.findOneAndDelete({ channelId });
+}
+
+async function updateGame(channelId, newWord, userId) {
+    const game = await getGame(channelId);
+    if (game) {
+        game.lastWord = newWord.toLowerCase();
+        game.lastUser = userId;
+        game.turnCount += 1;
+        await game.save();
+    }
+}
+
 // Xuất ra để các file khác dùng
 module.exports = {
     connectDB, getUser, updateBalance, updateLastWork,
