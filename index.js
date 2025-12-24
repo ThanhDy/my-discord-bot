@@ -3,7 +3,9 @@ const { REST, Routes, Client, GatewayIntentBits, Collection, EmbedBuilder } = re
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { connectDB, getExpiredRoles, deleteTempRole } = require('./database'); // Gọi file Database
+const { connectDB, loadDictionary, checkDictionary, getGame, updateGame, updateBalance,
+    checkDictionary, checkDeadEnd, // <--- Import thêm checkDeadEnd
+    createGame, getRandomWord, stopGame } = require('./database');
 
 // 2. CẤU HÌNH TOKEN
 const TOKEN = process.env.TOKEN;
@@ -23,6 +25,7 @@ server.listen(port, '0.0.0.0', () => {
 
 // 4. KẾT NỐI DB & KHỞI TẠO BOT
 connectDB(MONGO_URI);
+loadDictionary(); // <--- THÊM DÒNG NÀY ĐỂ TẢI TỪ ĐIỂN
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection(); // Nơi chứa lệnh
@@ -139,6 +142,71 @@ client.on('interactionCreate', async interaction => {
         } else {
             await interaction.reply({ content: 'Có lỗi khi chạy lệnh!', ephemeral: true });
         }
+    }
+});
+
+// --- XỬ LÝ GAME NỐI TỪ ---
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.content) return;
+
+    // 1. Kiểm tra có game không
+    const game = await getGame(message.channel.id);
+    if (!game) return;
+
+    const content = message.content.trim().toLowerCase();
+    const words = content.split(/\s+/);
+
+    if (words.length < 2) return;
+
+    const firstSyllable = words[0];
+    const endSyllable = words[words.length - 1];
+
+    if (game.lastUser === message.author.id) {
+        await message.react('❌');
+        return;
+    }
+
+    if (firstSyllable !== game.lastWord) return;
+
+    // Kiểm tra từ điển
+    if (!checkDictionary(content)) {
+        await message.reply(`🚫 Từ **"${content}"** không có trong từ điển!`);
+        await message.react('⚠️');
+        return;
+    }
+
+    // --- NỐI ĐÚNG ---
+
+    // 1. Thưởng nóng 1.000 xu (Theo yêu cầu)
+    await updateBalance(message.author.id, 1000);
+    await message.react('✅');
+
+    // 2. [MỚI] KIỂM TRA ĐƯỜNG CÙNG (JACKPOT)
+    const isDeadEnd = checkDeadEnd(endSyllable);
+
+    if (isDeadEnd) {
+        // --- XỬ LÝ KHI HẾT TỪ ĐỂ NỐI ---
+
+        // Thưởng Jackpot 100.000 xu
+        await updateBalance(message.author.id, 100000);
+
+        // Tạo game mới ngay lập tức
+        const randomWord = getRandomWord();
+        const newWords = randomWord.split(/\s+/);
+        const newLastSyllable = newWords[newWords.length - 1];
+
+        // Reset game trong DB
+        await createGame(message.channel.id, newLastSyllable);
+
+        // Thông báo hoành tráng
+        await message.channel.send(
+            `Không còn từ để nối tiếp. <@${message.author.id}> thắng và nhận 100,000 \n` +
+            `Lượt mới bắt đầu với từ: **"${randomWord.toUpperCase()}"**`
+        );
+    } else {
+        // --- NẾU VẪN CÒN TỪ ĐỂ NỐI ---
+        await updateGame(message.channel.id, endSyllable, message.author.id);
+        // Không cần chat "Chuẩn!" nữa để đỡ spam, chỉ react ✅ là đủ
     }
 });
 
