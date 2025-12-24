@@ -25,8 +25,13 @@ server.listen(port, '0.0.0.0', () => {
 connectDB(MONGO_URI);
 loadDictionary(); // <--- THÊM DÒNG NÀY ĐỂ TẢI TỪ ĐIỂN
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-client.commands = new Collection(); // Nơi chứa lệnh
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages, // <--- Cần quyền này để biết có tin nhắn tới
+        GatewayIntentBits.MessageContent // <--- Cần quyền này để ĐỌC được chữ trong tin nhắn
+    ]
+}); client.commands = new Collection(); // Nơi chứa lệnh
 
 // 5. TỰ ĐỘNG ĐỌC FILE LỆNH (COMMAND HANDLER)
 const commandsPath = path.join(__dirname, 'commands');
@@ -145,6 +150,9 @@ client.on('interactionCreate', async interaction => {
 
 // --- XỬ LÝ GAME NỐI TỪ ---
 client.on('messageCreate', async message => {
+
+    console.log(`[DEBUG] Nhận tin nhắn từ ${message.author.tag}: ${message.content}`);
+
     if (message.author.bot || !message.content) return;
 
     // 1. Kiểm tra có game không
