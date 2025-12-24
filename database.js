@@ -84,32 +84,50 @@ let dictionaryArray = [];        // Dùng để Random từ
 // Hàm tải từ điển
 async function loadDictionary() {
     console.log('⏳ Đang tải từ điển Tiếng Việt...');
-    const url = 'https://raw.githubusercontent.com/duync/vietnamese-wordlist/master/Viet74K.txt';
+    // Link mới (ổn định hơn)
+    const url = 'https://raw.githubusercontent.com/nguyenvanduocit/vietnamese-wordlist/master/Viet74K.txt';
 
     return new Promise((resolve, reject) => {
         https.get(url, (res) => {
+            // 1. Kiểm tra xem link có sống không (Status code phải là 200)
+            if (res.statusCode !== 200) {
+                console.error(`❌ Lỗi tải từ điển! Mã lỗi: ${res.statusCode}`);
+                // Fallback: Nếu lỗi thì dùng danh sách từ dự phòng nhỏ
+                dictionaryArray = ['thiên nhiên', 'nhiên liệu', 'con gà', 'gà mái', 'mái nhà', 'nhà cửa'];
+                dictionaryArray.forEach(w => dictionarySet.add(w));
+                resolve();
+                return;
+            }
+
             let data = '';
             res.on('data', (chunk) => data += chunk);
+
             res.on('end', () => {
                 const words = data.split('\n');
                 dictionaryArray = []; // Reset mảng
 
                 words.forEach(word => {
                     const cleanWord = word.trim().toLowerCase();
-                    // Chỉ lấy những từ có ít nhất 2 tiếng (từ ghép) để làm đề bài
-                    if (cleanWord) {
+                    // Chỉ lấy từ ghép (có dấu cách) để chơi nối từ
+                    if (cleanWord && cleanWord.includes(' ')) {
                         dictionarySet.add(cleanWord);
-                        if (cleanWord.includes(' ')) {
-                            dictionaryArray.push(cleanWord);
-                        }
+                        dictionaryArray.push(cleanWord);
                     }
                 });
-                console.log(`✅ Đã tải xong: ${dictionarySet.size} từ (trong đó ${dictionaryArray.length} từ ghép)!`);
+
+                // Log ra để kiểm tra xem có bị lỗi 404 nữa không
+                console.log(`✅ Đã tải xong: ${dictionaryArray.length} từ ghép!`);
+                if (dictionaryArray.length > 0) {
+                    console.log(`🔍 Ví dụ từ đầu tiên: "${dictionaryArray[0]}"`); // Phải là từ tiếng Việt, không phải "404"
+                }
                 resolve();
             });
+
         }).on('error', (err) => {
-            console.error('❌ Lỗi tải từ điển:', err);
-            reject(err);
+            console.error('❌ Lỗi kết nối mạng khi tải từ điển:', err);
+            // Fallback dự phòng
+            dictionaryArray = ['thiên nhiên', 'vui vẻ', 'học tập'];
+            resolve();
         });
     });
 }
