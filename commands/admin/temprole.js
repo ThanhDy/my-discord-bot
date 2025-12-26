@@ -17,7 +17,7 @@ module.exports = {
     async execute(interaction) {
         // 1. Check quyền Admin
         if (interaction.user.id !== ADMIN_ID && !interaction.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
-            return interaction.reply({ content: '🚫 Bạn không có quyền quản lý Role!', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: 'Bạn không có quyền!', flags: MessageFlags.Ephemeral });
         }
 
         const targetUser = interaction.options.getMember('user');

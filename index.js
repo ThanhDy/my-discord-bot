@@ -151,8 +151,6 @@ client.on('interactionCreate', async interaction => {
 // --- XỬ LÝ GAME NỐI TỪ ---
 client.on('messageCreate', async message => {
 
-    console.log(`[DEBUG] Nhận tin nhắn từ ${message.author.tag}: ${message.content}`);
-
     if (message.author.bot || !message.content) return;
 
     // 1. Kiểm tra có game không

@@ -27,24 +27,15 @@ module.exports = {
         const lastResetTimestamp = resetTimeVN.getTime() - OFFSET_VN;
         // --- KẾT THÚC LOGIC TÍNH GIỜ ---
 
-        // KIỂM TRA: Nếu đã điểm danh rồi
-        if (lastWorkTime > lastResetTimestamp) {
-            // Mốc reset tiếp theo là mốc cũ + 24h
-            const nextResetTimestamp = lastResetTimestamp + (24 * 60 * 60 * 1000);
+        const nextResetTimestamp = lastResetTimestamp + (24 * 60 * 60 * 1000);
 
-            // Tính thời gian còn lại (mili giây)
-            const timeLeft = nextResetTimestamp - now.getTime();
+        // Tính thời gian còn lại (mili giây)
+        const timeLeft = nextResetTimestamp - now.getTime();
 
-            // Đổi ra Giờ, Phút, Giây
-            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-
-            return interaction.reply({
-                content: `🚫 Đạo hữu đã điểm danh hôm nay rồi! Hãy quay lại vào lúc **5h sáng mai** (còn **${hours} giờ ${minutes} phút ${seconds} giây** nữa).`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
+        // Đổi ra Giờ, Phút, Giây
+        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
         // Thực hiện điểm danh
         const luong = Math.floor(Math.random() * (50000 - 10000 + 1)) + 10000;
@@ -53,6 +44,6 @@ module.exports = {
         // Lưu thời gian thực (now) vào database
         await updateLastWork(interaction.user.id);
 
-        await interaction.reply(`✅ **ĐIỂM DANH THÀNH CÔNG!**\nĐạo hữu vừa nhận được **${luong.toLocaleString('vi-VN')} Kim Hồn Tệ** cho ngày hôm nay.`);
+        await interaction.reply(`✅ **ĐIỂM DANH THÀNH CÔNG!**\nĐạo hữu vừa nhận được **${luong.toLocaleString('vi-VN')} Kim Hồn Tệ**. Lần kế tiếp còn **${hours} giờ ${minutes} phút ${seconds} giây**`);
     }
 };
