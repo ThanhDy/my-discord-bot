@@ -3,7 +3,7 @@ const { REST, Routes, Client, GatewayIntentBits, Collection, EmbedBuilder } = re
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { connectDB, loadDictionary, checkDictionary, getGame, updateGame, updateBalance, checkDeadEnd, createGame, getRandomWord, stopGame } = require('./database');
+const { connectDB, loadDictionary, checkDictionary, getGame, updateGame, updateBalance, checkDeadEnd, createGame, getRandomWord, stopGame, getExpiredRoles, deleteTempRole } = require('./database');
 
 // 2. CẤU HÌNH TOKEN
 const TOKEN = process.env.TOKEN;
@@ -28,8 +28,9 @@ loadDictionary(); // <--- THÊM DÒNG NÀY ĐỂ TẢI TỪ ĐIỂN
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages, // <--- Cần quyền này để biết có tin nhắn tới
-        GatewayIntentBits.MessageContent // <--- Cần quyền này để ĐỌC được chữ trong tin nhắn
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions
     ]
 }); client.commands = new Collection(); // Nơi chứa lệnh
 
@@ -148,12 +149,11 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
+
 // --- XỬ LÝ GAME NỐI TỪ ---
 client.on('messageCreate', async message => {
-
     if (message.author.bot || !message.content) return;
 
-    // 1. Kiểm tra có game không
     const game = await getGame(message.channel.id);
     if (!game) return;
 
@@ -165,55 +165,68 @@ client.on('messageCreate', async message => {
     const firstSyllable = words[0];
     const endSyllable = words[words.length - 1];
 
+    // 1. Chặn người chơi tự nối tiếp (Anti-spam)
     if (game.lastUser === message.author.id) {
-        await message.react('❌');
+        const warningMsg = await message.reply('Vui lòng đợi người chơi khác.');
+        await message.react('⏳');
+        setTimeout(() => {
+            warningMsg.delete().catch(() => { }); // catch lỗi nếu tin nhắn đã bị xóa trước đó
+        }, 5000);
         return;
     }
 
+    // 2. Chữ đầu phải khớp chữ cuối của từ trước
     if (firstSyllable !== game.lastWord) return;
 
-    // Kiểm tra từ điển
+    // --- KIỂM TRA HỢP LỆ (Quan trọng: Check cái này trước khi lưu) ---
+
+    // 3. KIỂM TRA TỪ ĐIỂN (Lọc từ sai ngay tại đây)
+    // Nếu từ sai -> Return ngay -> KHÔNG BAO GIỜ được lưu vào DB
     if (!checkDictionary(content)) {
-        await message.reply(`🚫 Từ **"${content}"** không có trong từ điển!`);
+        const warningMsg = await message.reply(`Từ **"${content}"** không có trong từ điển!`);
         await message.react('❌');
+        setTimeout(() => warningMsg.delete().catch(() => { }), 5000);
         return;
     }
 
-    // --- NỐI ĐÚNG ---
+    // 4. KIỂM TRA TRÙNG LẶP (Trong 50 lượt)
+    if (game.usedWords && game.usedWords.includes(content)) {
+        const index = game.usedWords.indexOf(content);
+        const turnsLeft = (50 - game.usedWords.length) + index + 1;
 
-    // 1. Thưởng nóng 1.000 xu (Theo yêu cầu)
+        const warningMsg = await message.reply(`Từ **"${content}"** đã được sử dụng trong 50 lượt gần đây! Hãy tìm từ khác.`);
+        await message.react('♻️');
+        setTimeout(() => warningMsg.delete().catch(() => { }), 5000);
+        return;
+    }
+
+    // --- NẾU TẤT CẢ ĐỀU ĐÚNG ---
+    // Đến đây mới là từ CHUẨN, cho phép lưu vào Database và thưởng tiền
+
     await updateBalance(message.author.id, 1000);
     await message.react('✅');
 
-    // 2. [MỚI] KIỂM TRA ĐƯỜNG CÙNG (JACKPOT)
+    // Kiểm tra Jackpot (Đường cùng)
     const isDeadEnd = checkDeadEnd(endSyllable);
 
     if (isDeadEnd) {
-        // --- XỬ LÝ KHI HẾT TỪ ĐỂ NỐI ---
-
-        // Thưởng Jackpot 100.000 xu
         await updateBalance(message.author.id, 100000);
 
-        // Tạo game mới ngay lập tức
+        // Reset game
         const randomWord = getRandomWord();
         const newWords = randomWord.split(/\s+/);
         const newLastSyllable = newWords[newWords.length - 1];
 
-        // Reset game trong DB
         await createGame(message.channel.id, newLastSyllable);
 
-        // Thông báo hoành tráng
         await message.channel.send(
             `Không còn từ để nối tiếp. <@${message.author.id}> thắng và nhận 100,000 \n` +
             `Lượt mới bắt đầu với từ: **"${randomWord.toUpperCase()}"**`
         );
     } else {
-        // --- NẾU VẪN CÒN TỪ ĐỂ NỐI ---
-        await updateGame(message.channel.id, endSyllable, message.author.id);
-        // Không cần chat "Chuẩn!" nữa để đỡ spam, chỉ react ✅ là đủ
+        await updateGame(message.channel.id, content, message.author.id);
     }
 });
-
 // 8. ĐĂNG NHẬP
 console.log('🤖 Đang đăng nhập...');
 client.login(TOKEN);

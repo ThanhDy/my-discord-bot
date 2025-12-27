@@ -29,10 +29,12 @@ const TempRole = mongoose.model('TempRole', tempRoleSchema);
 
 // 1. Schema cho Game Nối Từ
 const noituSchema = new mongoose.Schema({
-    channelId: { type: String, required: true, unique: true }, // Mỗi kênh chỉ 1 game
-    lastWord: { type: String, default: '' }, // Từ cuối cùng (VD: "gà")
-    lastUser: { type: String, default: '' }, // Người vừa nối (để chặn spam 1 mình)
-    turnCount: { type: Number, default: 0 }  // Số lượt đã chơi
+    channelId: { type: String, required: true, unique: true },
+    lastWord: { type: String, default: '' },
+    lastUser: { type: String, default: '' },
+    turnCount: { type: Number, default: 0 },
+    usedWords: { type: [String], default: [] },
+    resetVotes: { type: [String], default: [] },
 });
 const NoiTu = mongoose.model('NoiTu', noituSchema);
 
@@ -169,14 +171,14 @@ async function getGame(channelId) {
 }
 
 async function createGame(channelId, startWord) {
-    // Xóa game cũ nếu có
     await NoiTu.findOneAndDelete({ channelId });
-    // Tạo game mới
+    const word = startWord.toLowerCase();
     const newGame = new NoiTu({
         channelId,
-        lastWord: startWord.toLowerCase(),
+        lastWord: word,
         lastUser: '',
-        turnCount: 1
+        turnCount: 1,
+        usedWords: [word] // Lưu luôn từ đầu tiên vào lịch sử
     });
     await newGame.save();
     return newGame;
@@ -192,6 +194,15 @@ async function updateGame(channelId, newWord, userId) {
         game.lastWord = newWord.toLowerCase();
         game.lastUser = userId;
         game.turnCount += 1;
+
+        // Thêm từ mới vào mảng
+        game.usedWords.push(newWord.toLowerCase());
+
+        // Nếu mảng dài quá 50 từ thì xóa bớt từ cũ nhất đi
+        if (game.usedWords.length > 50) {
+            game.usedWords.shift();
+        }
+
         await game.save();
     }
 }
@@ -201,5 +212,5 @@ module.exports = {
     connectDB, getUser, updateBalance, updateLastWork,
     addTempRole, getExpiredRoles, deleteTempRole,
     getGame, createGame, stopGame, updateGame,
-    loadDictionary, checkDictionary, getRandomWord, checkDeadEnd,
+    loadDictionary, checkDictionary, getRandomWord, checkDeadEnd
 };
