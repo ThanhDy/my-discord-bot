@@ -23,7 +23,6 @@ server.listen(port, '0.0.0.0', () => {
 
 // 4. KẾT NỐI DB & KHỞI TẠO BOT
 connectDB(MONGO_URI);
-loadDictionary(); // <--- THÊM DÒNG NÀY ĐỂ TẢI TỪ ĐIỂN
 
 const client = new Client({
     intents: [
