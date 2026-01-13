@@ -149,7 +149,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 // --- DANH SÁCH TỪ CẤM & AUTO MOD (GIỮ LẠI) ---
-const BANNED_WORDS = ['thằng này', 'ái kỷ', 'ái kỉ', 'thằng ngu', 'chó đẻ', 'cặc', 'lồn'];
+const BANNED_WORDS = ['ái kỷ', 'ái kỉ', 'thằng ngu', 'chó đẻ', 'cặc', 'lồn'];
 
 const replyAndDelete = async (message, content) => {
     try {
