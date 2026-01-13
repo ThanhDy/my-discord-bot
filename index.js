@@ -3,7 +3,7 @@ const { REST, Routes, Client, GatewayIntentBits, Collection, EmbedBuilder } = re
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { connectDB, loadDictionary, checkDictionary, getGame, updateGame, updateBalance, checkDeadEnd, createGame, getRandomWord, stopGame, getExpiredRoles, deleteTempRole } = require('./database');
+const { connectDB, updateBalance, getExpiredRoles, deleteTempRole } = require('./database');
 
 // 2. CẤU HÌNH TOKEN
 const TOKEN = process.env.TOKEN;
@@ -149,84 +149,34 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
+// --- DANH SÁCH TỪ CẤM & AUTO MOD (GIỮ LẠI) ---
+const BANNED_WORDS = ['thằng này', 'ái kỷ', 'ái kỉ', 'thằng ngu', 'chó đẻ', 'cặc', 'lồn'];
 
-// --- XỬ LÝ GAME NỐI TỪ ---
+const replyAndDelete = async (message, content) => {
+    try {
+        const warning = await message.reply(content);
+        setTimeout(async () => {
+            await message.delete().catch(() => { });
+            await warning.delete().catch(() => { });
+        }, 3000);
+    } catch (err) {
+        console.log("Lỗi xóa tin nhắn:", err);
+    }
+};
+
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.content) return;
 
-    const game = await getGame(message.channel.id);
-    if (!game) return;
-
+    // Chỉ còn logic lọc từ cấm, không còn game nối từ
     const content = message.content.trim().toLowerCase();
-    const words = content.split(/\s+/);
+    const hasBadWord = BANNED_WORDS.some(word => content.includes(word));
 
-    if (words.length < 2) return;
-
-    const firstSyllable = words[0];
-    const endSyllable = words[words.length - 1];
-
-    // 1. Chặn người chơi tự nối tiếp (Anti-spam)
-    if (game.lastUser === message.author.id) {
-        const warningMsg = await message.reply('Vui lòng đợi người chơi khác.');
-        await message.react('⏳');
-        setTimeout(() => {
-            warningMsg.delete().catch(() => { }); // catch lỗi nếu tin nhắn đã bị xóa trước đó
-        }, 5000);
-        return;
-    }
-
-    // 2. Chữ đầu phải khớp chữ cuối của từ trước
-    if (firstSyllable !== game.lastWord) return;
-
-    // --- KIỂM TRA HỢP LỆ (Quan trọng: Check cái này trước khi lưu) ---
-
-    // 3. KIỂM TRA TỪ ĐIỂN (Lọc từ sai ngay tại đây)
-    // Nếu từ sai -> Return ngay -> KHÔNG BAO GIỜ được lưu vào DB
-    if (!checkDictionary(content)) {
-        const warningMsg = await message.reply(`Từ **"${content}"** không có trong từ điển!`);
-        await message.react('❌');
-        setTimeout(() => warningMsg.delete().catch(() => { }), 5000);
-        return;
-    }
-
-    // 4. KIỂM TRA TRÙNG LẶP (Trong 50 lượt)
-    if (game.usedWords && game.usedWords.includes(content)) {
-        const index = game.usedWords.indexOf(content);
-        const turnsLeft = (50 - game.usedWords.length) + index + 1;
-
-        const warningMsg = await message.reply(`Từ **"${content}"** đã được sử dụng trong 50 lượt gần đây! Hãy tìm từ khác.`);
-        await message.react('♻️');
-        setTimeout(() => warningMsg.delete().catch(() => { }), 5000);
-        return;
-    }
-
-    // --- NẾU TẤT CẢ ĐỀU ĐÚNG ---
-    // Đến đây mới là từ CHUẨN, cho phép lưu vào Database và thưởng tiền
-
-    await updateBalance(message.author.id, 1000);
-    await message.react('✅');
-
-    // Kiểm tra Jackpot (Đường cùng)
-    const isDeadEnd = checkDeadEnd(endSyllable);
-
-    if (isDeadEnd) {
-        await updateBalance(message.author.id, 100000);
-
-        // Reset game
-        const randomWord = getRandomWord();
-        const newWords = randomWord.split(/\s+/);
-        const newLastSyllable = newWords[newWords.length - 1];
-
-        await createGame(message.channel.id, newLastSyllable);
-
-        await message.channel.send(
-            `Không còn từ để nối tiếp. <@${message.author.id}> thắng và nhận 100,000 \n` +
-            `Lượt mới bắt đầu với từ: **"${randomWord.toUpperCase()}"**`
-        );
-    } else {
-        await updateGame(message.channel.id, content, message.author.id);
+    if (hasBadWord) {
+        await replyAndDelete(message, `🚫 **Cảnh báo!** Văn minh lên bạn êi. Có thể nói giảm nói tránh.`);
     }
 });
+
+
 // 8. ĐĂNG NHẬP
 console.log('🤖 Đang đăng nhập...');
 client.login(TOKEN);
