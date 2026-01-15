@@ -149,7 +149,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 // --- DANH SÁCH TỪ CẤM & AUTO MOD (GIỮ LẠI) ---
-const BANNED_WORDS = ['ái kỷ', 'ái kỉ', 'thằng ngu', 'chó đẻ', 'cặc', 'lồn'];
+const BANNED_WORDS = ['ái kỷ', 'ái kỉ', 'thằng ngu', 'chó đẻ', 'cặc'];
 
 const replyAndDelete = async (message, content) => {
     try {
@@ -171,7 +171,7 @@ client.on('messageCreate', async message => {
     const hasBadWord = BANNED_WORDS.some(word => content.includes(word));
 
     if (hasBadWord) {
-        await replyAndDelete(message, `🚫 **Cảnh báo!** Văn minh lên bạn êi. Có thể nói giảm nói tránh.`);
+        await replyAndDelete(message, `🚫 **Cảnh báo!** Văn minh lên bạn êi. Có thể nói giảm nói tránh`);
     }
 });
 
